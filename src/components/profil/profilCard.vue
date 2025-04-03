@@ -1,91 +1,157 @@
 <script setup lang="ts">
-import { ref } from 'vue';
-import { CircleIcon } from 'vue-tabler-icons';
-import { recentTransaction } from '@/data/dashboard/dashboardData';
+import { ref, onMounted } from 'vue';
+import axios from 'axios';
+import { useRouter } from 'vue-router';
 
-// Données du profil (exemple)
+const router = useRouter();
+const loading = ref(false);
+const error = ref('');
+const success = ref('');
+
 const profile = ref({
-  name: 'John Doe',
-  email: 'john.doe@example.com',
-  bio: 'Développeur passionné par Vue.js et les nouvelles technologies.',
-  profilePicture: null as File | null, // Pour stocker la photo de profil
+  id: null,
+  nom: '',
+  prenom: '',
+  email: '',
+  num_tlf: '',
+  region: '',
+  adresse: ''
 });
 
-// Fonction pour gérer la soumission du formulaire
-const submitForm = () => {
-  console.log('Profil mis à jour :', profile.value);
-  // Ici, vous pouvez ajouter la logique pour envoyer les données à un backend
-};
+const fetchProfile = async () => {
+  try {
+    const response = await axios.get('http://localhost:8000/api/auth/me', {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('auth_token')}`
+      }
+    });
 
-// Fonction pour gérer le téléchargement de la photo de profil
-const handleFileUpload = (event: Event) => {
-  const target = event.target as HTMLInputElement;
-  if (target.files && target.files[0]) {
-    profile.value.profilePicture = target.files[0];
+    if (response.data.client) {
+      const client = response.data.client;
+      profile.value = {
+        id: client.id,
+        nom: client.nom,
+        prenom: client.prenom,
+        email: client.email,
+        num_tlf: client.num_tlf,
+        region: client.region,
+        adresse: client.adresse
+      };
+    }
+  } catch (err) {
+    error.value = 'Erreur lors du chargement du profil';
+    console.error('Erreur fetchProfile:', err);
   }
 };
+
+const updateProfile = async () => {
+  if (!profile.value.id) {
+    error.value = "ID client manquant";
+    return;
+  }
+
+  loading.value = true;
+  error.value = '';
+  success.value = '';
+
+  try {
+    const response = await axios.put(
+      `http://localhost:8000/api/clients/${profile.value.id}`,
+      profile.value,
+      {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    success.value = 'Profil mis à jour avec succès';
+    await fetchProfile();
+  } catch (err) {
+    if (axios.isAxiosError(err) && err.response) {
+      error.value = err.response.data.message || 'Erreur lors de la mise à jour';
+      if (err.response.data.errors) {
+        error.value += ': ' + Object.values(err.response.data.errors).join(', ');
+      }
+    } else {
+      error.value = 'Erreur de connexion au serveur';
+    }
+  } finally {
+    loading.value = false;
+  }
+};
+
+onMounted(() => {
+  fetchProfile();
+});
 </script>
 
 <template>
-  <v-card elevation="10"> <!-- Suppression de la classe withbg -->
+  <v-card elevation="10">
     <v-card-item class="pb-0">
       <v-card-title class="text-h5 pt-sm-2">Mon Profil</v-card-title>
+      
       <div class="recent-transaction mt-10 px-3">
-        <!-- Formulaire de modification de profil -->
-        <v-form @submit.prevent="submitForm">
-          <!-- Photo de profil -->
-          <v-row>
-            <v-col cols="12" class="d-flex justify-center">
-              <v-avatar size="120" class="mb-4">
-                <v-img
-                  v-if="profile.profilePicture"
-                  :src="URL.createObjectURL(profile.profilePicture)"
-                  alt="Photo de profil"
-                />
-                <v-icon v-else size="120" color="grey">mdi-account-circle</v-icon>
-              </v-avatar>
-            </v-col>
-            <v-col cols="12" class="d-flex justify-center">
-              <v-file-input
-                label="Changer la photo de profil"
-                accept="image/*"
-                prepend-icon="mdi-camera"
-                @change="handleFileUpload"
-                hide-details
-              ></v-file-input>
-            </v-col>
-          </v-row>
+        <v-alert v-if="error" type="error" class="mb-4">{{ error }}</v-alert>
+        <v-alert v-if="success" type="success" class="mb-4">{{ success }}</v-alert>
 
-          <!-- Nom -->
+        <v-form @submit.prevent="updateProfile">
           <v-text-field
-            v-model="profile.name"
+            v-model="profile.nom"
             label="Nom"
             outlined
             dense
             class="mt-4"
+            required
           ></v-text-field>
 
-          <!-- Email -->
+          <v-text-field
+            v-model="profile.prenom"
+            label="Prénom"
+            outlined
+            dense
+            required
+          ></v-text-field>
+
           <v-text-field
             v-model="profile.email"
             label="Email"
             outlined
             dense
             type="email"
+            required
           ></v-text-field>
 
-          <!-- Bio -->
-          <v-textarea
-            v-model="profile.bio"
-            label="Bio"
+          <v-text-field
+            v-model="profile.num_tlf"
+            label="Téléphone"
             outlined
             dense
-            rows="3"
+          ></v-text-field>
+
+          <v-text-field
+            v-model="profile.region"
+            label="Région"
+            outlined
+            dense
+          ></v-text-field>
+
+          <v-textarea
+            v-model="profile.adresse"
+            label="Adresse"
+            outlined
+            dense
+            rows="2"
           ></v-textarea>
 
-          <!-- Bouton de soumission -->
-          <v-btn type="submit" color="primary" class="mt-4">
-            Enregistrer les modifications
+          <v-btn 
+            type="submit" 
+            color="primary" 
+            class="mt-4"
+            :loading="loading"
+          >
+            Enregistrer
           </v-btn>
         </v-form>
       </div>
@@ -94,18 +160,9 @@ const handleFileUpload = (event: Event) => {
 </template>
 
 <style lang="scss">
-.v-avatar {
-  border: 2px solid #ddd;
-}
-
-.v-file-input {
-  max-width: 300px;
-}
-
-.recent-transaction {
-  .line {
-    width: 2px;
-    height: 35px;
-  }
+/* Styles simplifiés */
+.v-card {
+  max-width: 800px;
+  margin: 0 auto;
 }
 </style>

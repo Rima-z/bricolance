@@ -1,6 +1,43 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-const checkbox = ref(false);
+import axios from 'axios';
+import { useRouter } from 'vue-router';
+
+const router = useRouter();
+
+const formData = ref({
+    email: '',
+    password: ''
+});
+
+const loading = ref(false);
+const error = ref('');
+
+const login = async () => {
+    loading.value = true;
+    error.value = '';
+    
+    try {
+        const response = await axios.post('http://localhost:8000/api/auth/login', {
+            email: formData.value.email,
+            password: formData.value.password
+        });
+        
+        // Stocker le token
+        localStorage.setItem('auth_token', response.data.token);
+        
+        // Rediriger vers la page d'accueil ou dashboard
+        router.push('/');
+    } catch (err) {
+        if (axios.isAxiosError(err) && err.response) {
+            error.value = err.response.data.error || 'Email ou mot de passe incorrect';
+        } else {
+            error.value = 'Erreur de connexion au serveur';
+        }
+    } finally {
+        loading.value = false;
+    }
+};
 </script>
 
 <template>
@@ -12,18 +49,32 @@ const checkbox = ref(false);
     <div>
         <v-row class="mb-3">
             <v-col cols="12">
-                <v-label class="font-weight-medium mb-1">Username</v-label>
-                <v-text-field variant="outlined" class="pwdInput" hide-details color="primary"></v-text-field>
+                <v-alert v-if="error" type="error" class="mb-4">{{ error }}</v-alert>
+                <v-label class="font-weight-medium mb-1">Email</v-label>
+                <v-text-field 
+                    v-model="formData.email" 
+                    variant="outlined" 
+                    class="pwdInput" 
+                    hide-details 
+                    color="primary"
+                    type="email"
+                ></v-text-field>
             </v-col>
             <v-col cols="12">
                 <v-label class="font-weight-medium mb-1">Password</v-label>
-                <v-text-field variant="outlined" class="border-borderColor" type="password" hide-details
-                    color="primary"></v-text-field>
+                <v-text-field 
+                    v-model="formData.password" 
+                    variant="outlined" 
+                    class="border-borderColor" 
+                    type="password" 
+                    hide-details
+                    color="primary"
+                ></v-text-field>
             </v-col>
             <v-col cols="12 " class="py-0">
                 <div class="d-flex flex-wrap align-center w-100 ">
                     <v-checkbox hide-details color="primary">
-                        <template v-slot:label class="">Remeber this Device</template>
+                        <template v-slot:label class="">Remember this Device</template>
                     </v-checkbox>
                     <div class="ml-sm-auto">
                         <RouterLink to=""
@@ -33,8 +84,18 @@ const checkbox = ref(false);
                 </div>
             </v-col>
             <v-col cols="12">
-                <v-btn size="large" rounded="pill" color="primary" class="rounded-pill" block type="submit" flat>Sign
-                    In</v-btn>
+                <v-btn 
+                    @click="login"
+                    size="large" 
+                    rounded="pill" 
+                    color="primary" 
+                    class="rounded-pill" 
+                    block 
+                    :loading="loading"
+                    flat
+                >
+                    Sign In
+                </v-btn>
             </v-col>
         </v-row>
     </div>
