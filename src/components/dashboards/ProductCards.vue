@@ -106,7 +106,7 @@ onMounted(() => {
           <div class="d-flex justify-space-between align-center">
             <h6 class="text-h6">{{ service.sousCategorie?.name || 'Service' }}</h6>
             <v-chip color="primary" class="ml-2">
-              {{ service.prix }} DH
+              {{ service.prix }} DT
             </v-chip>
           </div>
           

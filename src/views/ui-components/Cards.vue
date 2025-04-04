@@ -13,38 +13,13 @@ import CardsTwitter from "@/components/ui-components/cards/CardsTwitter.vue";
 
 <template>
   <v-row>
-    <v-col cols="12" sm="12" lg="6">
-      <UiChildCard title="With Props">
+    <v-col cols="12" sm="12" lg="12">
+      <UiChildCard title="Catégories disponibles">
         <CardsProps />
       </UiChildCard>
     </v-col>
-    <v-col cols="12" sm="12" lg="6">
-      <UiChildCard title="With Slots">
-        <CardsSlots />
-      </UiChildCard>
-    </v-col>
-    <v-col cols="12" sm="12" lg="6" class="d-flex align-items-stretch">
-      <UiChildCard title="Content Wrap">
-        <CardsContentWrap />
-      </UiChildCard>
-    </v-col>
+   
+   
 
-    <v-col cols="12" sm="12" lg="6" class="d-flex align-items-stretch">
-      <UiChildCard title="Card Media">
-        <CardsMedia />
-      </UiChildCard>
-    </v-col>
-
-    <v-col cols="12" sm="12" lg="6" class="d-flex align-items-stretch">
-      <UiChildCard title="Weather Card">
-        <CardsWeather />
-      </UiChildCard>
-    </v-col>
-
-    <v-col cols="12" sm="12" lg="6">
-      <UiChildCard title="Twitter Card">
-        <CardsTwitter />
-      </UiChildCard>
-    </v-col>
   </v-row>
 </template>

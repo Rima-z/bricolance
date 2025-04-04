@@ -26,6 +26,12 @@ export interface menu {
 const sidebarItem: menu[] = [
   { header: 'accueil' },
   {
+    title: "Catégories",
+    icon: BoxMultiple1Icon,
+    BgColor: 'primary',
+    to: "/ui/cards",
+  },
+  {
     title: 'Services',
     icon: LayoutDashboardIcon,
     BgColor: 'primary',
@@ -44,12 +50,7 @@ const sidebarItem: menu[] = [
     BgColor: 'primary',
     to: "/ui/buttons",
   },
-  {
-    title: "Cards",
-    icon: BoxMultiple1Icon,
-    BgColor: 'primary',
-    to: "/ui/cards",
-  },
+  
   {
     title: "Tables",
     icon: BorderAllIcon,
