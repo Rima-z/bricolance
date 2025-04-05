@@ -6,7 +6,7 @@ import axios from 'axios';
 const selectedCategory = ref('');
 const searchQuery = ref('');
 const services = ref([]);
-const categories = ref([]); // Maintenant une référence séparée
+const categories = ref([]);
 const loading = ref(false);
 const error = ref('');
 
@@ -26,7 +26,7 @@ const fetchServices = async () => {
 const fetchCategories = async () => {
   try {
     const response = await axios.get('http://localhost:8000/api/categories');
-    categories.value = response.data.map(cat => cat.nom); // Extraction des noms
+    categories.value = response.data.map(cat => cat.nom);
   } catch (err) {
     error.value = 'Erreur lors du chargement des catégories';
     console.error(err);
@@ -35,11 +35,11 @@ const fetchCategories = async () => {
   }
 };
 
-// Services filtrés
+// Filtrage des services
 const filteredServices = computed(() => {
   return services.value.filter(service => {
-    const matchesCategory = selectedCategory.value 
-      ? service.categorie?.name === selectedCategory.value 
+    const matchesCategory = selectedCategory.value
+      ? service.categorie?.nom === selectedCategory.value
       : true;
     const matchesSearch = service.description?.toLowerCase().includes(searchQuery.value.toLowerCase());
     return matchesCategory && matchesSearch;
@@ -64,7 +64,7 @@ onMounted(async () => {
             label="Filtrer par catégorie"
             clearable
             :loading="loading"
-          ></v-select>
+          />
         </v-col>
         <v-col cols="12" sm="6">
           <v-text-field
@@ -72,7 +72,7 @@ onMounted(async () => {
             label="Rechercher par description"
             clearable
             :loading="loading"
-          ></v-text-field>
+          />
         </v-col>
       </v-row>
     </v-col>
@@ -91,7 +91,6 @@ onMounted(async () => {
       :key="service.id"
     >
       <v-card elevation="10" class="withbg">
-        <!-- Affichage de la première image du portfolio si disponible -->
         <RouterLink :to="`/services/${service.id}`">
           <v-img 
             v-if="service.prestataire?.portfolio?.images?.length"
@@ -99,19 +98,19 @@ onMounted(async () => {
             height="200px" 
             cover
             class="rounded-t-md"
-          ></v-img>
+          />
           <v-img
             v-else
             src="@/assets/images/products/s1.jpg"
             height="200px"
             cover
             class="rounded-t-md"
-          ></v-img>
+          />
         </RouterLink>
 
         <v-card-item class="pt-2">
           <div class="d-flex justify-space-between align-center">
-            <h6 class="text-h6">{{ service.sousCategorie?.name || 'Service' }}</h6>
+            <h6 class="text-h6">{{ service.sousCategorie?.nom || 'Service' }}</h6>
             <v-chip color="primary" class="ml-2">
               {{ service.prix }} DT
             </v-chip>
@@ -127,7 +126,7 @@ onMounted(async () => {
                 <v-img 
                   v-if="service.prestataire?.photo"
                   :src="service.prestataire.photo"
-                ></v-img>
+                />
                 <v-icon v-else>mdi-account</v-icon>
               </v-avatar>
               <span class="ml-2">
@@ -136,21 +135,14 @@ onMounted(async () => {
             </div>
             
             <v-rating 
-              v-if="service.commentaires?.length"
+              :model-value="service.commentaires?.length 
+                ? service.commentaires.reduce((acc, c) => acc + c.note, 0) / service.commentaires.length 
+                : 0"
               density="compact" 
               color="warning" 
               size="small" 
-              :model-value="service.commentaires.reduce((acc, c) => acc + c.note, 0) / service.commentaires.length"
               readonly
-            ></v-rating>
-            <v-rating 
-              v-else
-              density="compact" 
-              color="warning" 
-              size="small" 
-              model-value="0"
-              readonly
-            ></v-rating>
+            />
           </div>
         </v-card-item>
       </v-card>
@@ -159,10 +151,7 @@ onMounted(async () => {
     <!-- Chargement -->
     <v-col cols="12" v-if="loading">
       <div class="text-center">
-        <v-progress-circular
-          indeterminate
-          color="primary"
-        ></v-progress-circular>
+        <v-progress-circular indeterminate color="primary" />
       </div>
     </v-col>
 
