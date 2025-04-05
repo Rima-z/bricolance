@@ -34,11 +34,7 @@ const sDrawer = ref(true);
                 </template>
                 <!-- <Moreoption/> -->
             </v-list>
-            <div class="py-0 px-6">
-                <v-btn class="mr-2 bg-primary rounded-pill" size="large"
-                    href="https://www.wrappixel.com/templates/spike-vuejs-admin-dashboard/?ref=33" block target="_blank">Upgrade to
-                    Pro</v-btn>
-            </div>
+           
         </perfect-scrollbar>
     </v-navigation-drawer>
     <div class="container verticalLayout">

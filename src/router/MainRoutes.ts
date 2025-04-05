@@ -3,7 +3,7 @@ const MainRoutes = {
     meta: {
         requiresAuth: true
     },
-    redirect: '/main',
+    redirect: '/main/ui/cards',  // Modifié pour rediriger vers /ui/cards
     component: () => import('@/layouts/full/FullLayout.vue'),
     children: [
         {

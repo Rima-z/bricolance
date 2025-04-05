@@ -27,11 +27,13 @@ const register = async () => {
     try {
         const response = await axios.post('http://localhost:8000/api/auth/register', formData.value);
         
-        // Stocker le token (par exemple dans localStorage)
-        localStorage.setItem('auth_token', response.data.token);
+        // Stocker le token (si nécessaire)
+        if (response.data.token) {
+            localStorage.setItem('auth_token', response.data.token);
+        }
         
-        // Rediriger vers la page d'accueil ou dashboard
-        router.push('/');
+        // Rediriger vers /login après inscription
+        router.push('/auth/login');
     } catch (err) {
         if (axios.isAxiosError(err) && err.response) {
             error.value = err.response.data.message || 'Une erreur est survenue';

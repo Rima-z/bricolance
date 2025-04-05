@@ -26,8 +26,8 @@ const login = async () => {
         // Stocker le token
         localStorage.setItem('auth_token', response.data.token);
         
-        // Rediriger vers la page d'accueil ou dashboard
-        router.push('/');
+        // Rediriger vers /ui/cards au lieu de '/'
+        router.push('/ui/cards');
     } catch (err) {
         if (axios.isAxiosError(err) && err.response) {
             error.value = err.response.data.error || 'Email ou mot de passe incorrect';

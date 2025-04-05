@@ -6,6 +6,7 @@ import axios from 'axios';
 const selectedCategory = ref('');
 const searchQuery = ref('');
 const services = ref([]);
+const categories = ref([]); // Maintenant une référence séparée
 const loading = ref(false);
 const error = ref('');
 
@@ -18,15 +19,21 @@ const fetchServices = async () => {
   } catch (err) {
     error.value = 'Erreur lors du chargement des services';
     console.error(err);
+  }
+};
+
+// Charger les catégories depuis l'API
+const fetchCategories = async () => {
+  try {
+    const response = await axios.get('http://localhost:8000/api/categories');
+    categories.value = response.data.map(cat => cat.nom); // Extraction des noms
+  } catch (err) {
+    error.value = 'Erreur lors du chargement des catégories';
+    console.error(err);
   } finally {
     loading.value = false;
   }
 };
-
-// Liste des catégories disponibles
-const categories = computed(() => {
-  return [...new Set(services.value.map(service => service.categorie?.name))];
-});
 
 // Services filtrés
 const filteredServices = computed(() => {
@@ -40,8 +47,8 @@ const filteredServices = computed(() => {
 });
 
 // Chargement initial
-onMounted(() => {
-  fetchServices();
+onMounted(async () => {
+  await Promise.all([fetchServices(), fetchCategories()]);
 });
 </script>
 
