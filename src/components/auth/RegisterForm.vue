@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import axios from 'axios';
 import { useRouter } from 'vue-router';
 
@@ -14,7 +14,15 @@ const formData = ref({
     adresse: '',
     password: '',
     password_confirmation: '',
-    role: 'client' // Valeur par défaut
+    role: 'client', // Valeur par défaut
+    portfolio: '' // Nouveau champ pour le portfolio
+});
+
+const showPortfolioField = ref(false); // Pour afficher/masquer le champ portfolio
+
+// Observer les changements du rôle
+watch(() => formData.value.role, (newRole) => {
+    showPortfolioField.value = newRole === 'prestataire';
 });
 
 const loading = ref(false);
@@ -25,14 +33,19 @@ const register = async () => {
     error.value = '';
     
     try {
-        const response = await axios.post('http://localhost:8000/api/auth/register', formData.value);
+        // Préparer les données à envoyer
+        const dataToSend = {
+            ...formData.value,
+            // Ne pas envoyer portfolio si ce n'est pas un prestataire
+            portfolio: formData.value.role === 'prestataire' ? formData.value.portfolio : null
+        };
+
+        const response = await axios.post('http://localhost:8000/api/auth/register', dataToSend);
         
-        // Stocker le token (si nécessaire)
         if (response.data.token) {
             localStorage.setItem('auth_token', response.data.token);
         }
         
-        // Rediriger vers /login après inscription
         router.push('/auth/login');
     } catch (err) {
         if (axios.isAxiosError(err) && err.response) {
@@ -96,6 +109,18 @@ const register = async () => {
                 <v-radio label="Client" value="client"></v-radio>
                 <v-radio label="Prestataire" value="prestataire"></v-radio>
             </v-radio-group>
+        </v-col>
+        
+        <v-col cols="12" v-if="showPortfolioField">
+            <v-label class="font-weight-medium mb-1">Portfolio (URL ou description)</v-label>
+            <v-textarea 
+                v-model="formData.portfolio" 
+                variant="outlined" 
+                hide-details 
+                color="primary"
+                placeholder="Décrivez vos compétences ou fournissez un lien vers votre portfolio"
+                rows="3"
+            ></v-textarea>
         </v-col>
         
         <v-col cols="12">

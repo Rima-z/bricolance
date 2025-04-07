@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import axios from 'axios';
 
 // Références pour les filtres
-const selectedCategory = ref('');
+const selectedCategory = ref<number | null>(null);
+const selectedSubCategory = ref<number | null>(null);
 const searchQuery = ref('');
-const services = ref([]);
-const categories = ref([]);
+const services = ref<any[]>([]);
+const categories = ref<{id: number, nom: string}[]>([]);
+const subCategories = ref<{id: number, nom: string}[]>([]);
 const loading = ref(false);
 const error = ref('');
 
@@ -26,7 +28,10 @@ const fetchServices = async () => {
 const fetchCategories = async () => {
   try {
     const response = await axios.get('http://localhost:8000/api/categories');
-    categories.value = response.data.map(cat => cat.nom);
+    categories.value = response.data.map((cat: any) => ({
+      id: cat.id,
+      nom: cat.nom
+    }));
   } catch (err) {
     error.value = 'Erreur lors du chargement des catégories';
     console.error(err);
@@ -35,14 +40,53 @@ const fetchCategories = async () => {
   }
 };
 
+// Charger les sous-catégories en fonction de la catégorie sélectionnée
+const fetchSubCategories = async (categoryId: number | null) => {
+  try {
+    if (!categoryId) {
+      subCategories.value = [];
+      return;
+    }
+    
+    const response = await axios.get(`http://localhost:8000/api/souscategories`, {
+      params: { categorie_id: categoryId }
+    });
+    
+    subCategories.value = response.data.map((subCat: any) => ({
+      id: subCat.id,
+      nom: subCat.nom
+    }));
+  } catch (err) {
+    error.value = 'Erreur lors du chargement des sous-catégories';
+    console.error(err);
+  }
+};
+
+// Watcher pour charger les sous-catégories quand la catégorie change
+watch(selectedCategory, (newVal) => {
+  selectedSubCategory.value = null;
+  fetchSubCategories(newVal);
+});
+
 // Filtrage des services
 const filteredServices = computed(() => {
   return services.value.filter(service => {
+    // Filtre par catégorie
     const matchesCategory = selectedCategory.value
-      ? service.categorie?.nom === selectedCategory.value
+      ? service.categorie?.id === selectedCategory.value
       : true;
-    const matchesSearch = service.description?.toLowerCase().includes(searchQuery.value.toLowerCase());
-    return matchesCategory && matchesSearch;
+    
+    // Filtre par sous-catégorie
+    const matchesSubCategory = selectedSubCategory.value
+      ? service.sous_categorie_id === selectedSubCategory.value
+      : true;
+    
+    // Filtre par recherche texte
+    const matchesSearch = searchQuery.value
+      ? service.description?.toLowerCase().includes(searchQuery.value.toLowerCase())
+      : true;
+    
+    return matchesCategory && matchesSubCategory && matchesSearch;
   });
 });
 
@@ -57,16 +101,30 @@ onMounted(async () => {
     <!-- Filtres -->
     <v-col cols="12">
       <v-row>
-        <v-col cols="12" sm="6">
+        <v-col cols="12" sm="4">
           <v-select
             v-model="selectedCategory"
             :items="categories"
+            item-title="nom"
+            item-value="id"
             label="Filtrer par catégorie"
             clearable
             :loading="loading"
           />
         </v-col>
-        <v-col cols="12" sm="6">
+        <v-col cols="12" sm="4">
+          <v-select
+            v-model="selectedSubCategory"
+            :items="subCategories"
+            item-title="nom"
+            item-value="id"
+            label="Filtrer par sous-catégorie"
+            clearable
+            :disabled="!selectedCategory"
+            :loading="loading"
+          />
+        </v-col>
+        <v-col cols="12" sm="4">
           <v-text-field
             v-model="searchQuery"
             label="Rechercher par description"
