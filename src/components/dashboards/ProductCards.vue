@@ -218,4 +218,4 @@ onMounted(async () => {
       <v-alert type="info">Aucun service trouvé</v-alert>
     </v-col>
   </v-row>
-</template>
+</template>        

@@ -21,6 +21,7 @@ export interface menu {
   disabled?: boolean;
   type?: string;
   subCaption?: string;
+  requiresAuth?: boolean;
 }
 
 const sidebarItem: menu[] = [
@@ -42,7 +43,7 @@ const sidebarItem: menu[] = [
     icon: UserIcon,
     BgColor: 'primary',
     to: "/profil",
-    
+    requiresAuth: true // Seulement visible si connecté
   },
   {
     title: "Button",
@@ -63,14 +64,16 @@ const sidebarItem: menu[] = [
     title: 'Login',
     icon: LoginIcon,
     BgColor: 'primary',
-    to: '/auth/login'
-},
-{
+    to: '/auth/login',
+    requiresAuth: false // Seulement visible si non connecté
+  },
+  {
     title: 'Register',
     icon: UserPlusIcon,
     BgColor: 'primary',
-    to: '/auth/register'
-},
+    to: '/auth/register',
+    requiresAuth: false // Seulement visible si non connecté
+  },
 { header: 'Extra' },
 {
     title: 'Icons',
