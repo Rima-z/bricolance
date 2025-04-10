@@ -1,13 +1,24 @@
 <script setup lang="ts">
 import { UserIcon, MailIcon, ListCheckIcon } from 'vue-tabler-icons';
 import { useRouter } from 'vue-router';
+import { useAuthStore } from '@/stores/auth';
 
 const router = useRouter();
+const authStore = useAuthStore();
 
 const goToProfile = () => {
   router.push('/profil');
 };
 
+const handleLogout = async () => {
+  try {
+    await authStore.logout();
+    // Redirection vers la page de login après déconnexion
+    router.push('/');
+  } catch (error) {
+    console.error('Erreur lors de la déconnexion:', error);
+  }
+};
 </script>
 
 <template>
@@ -36,7 +47,7 @@ const goToProfile = () => {
                 </v-list-item>
             </v-list>
             <div class="pt-4 pb-4 px-5 text-center">
-                <v-btn to="" color="primary" variant="outlined" class="rounded-pill" block>Se déconnecter</v-btn>
+                <v-btn @click="handleLogout" color="primary" variant="outlined" class="rounded-pill" block>Se déconnecter</v-btn>
             </div>
         </v-sheet>
     </v-menu>

@@ -13,6 +13,7 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = newToken;
     localStorage.setItem('auth_token', newToken);
     isAuthenticated.value = true;
+    axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
   }
 
   async function checkAuth() {
@@ -34,12 +35,23 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  function logout() {
-    localStorage.removeItem('auth_token');
-    token.value = null;
-    isAuthenticated.value = false;
-    user.value = null;
-    router.push('/auth/login');
+  async function logout() {
+    try {
+      // Appel API pour déconnexion côté serveur
+      await axios.post('http://localhost:8000/api/auth/logout', {}, {
+        headers: { Authorization: `Bearer ${token.value}` }
+      });
+    } catch (error) {
+      console.error('Erreur lors de la déconnexion API:', error);
+    } finally {
+      // Nettoyage côté client quoi qu'il arrive
+      localStorage.removeItem('auth_token');
+      delete axios.defaults.headers.common['Authorization'];
+      token.value = null;
+      isAuthenticated.value = false;
+      user.value = null;
+      router.push('/');
+    }
   }
 
   return { token, isAuthenticated, user, setToken, checkAuth, logout };

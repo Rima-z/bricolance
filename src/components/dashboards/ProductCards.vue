@@ -21,6 +21,8 @@ const fetchServices = async () => {
   } catch (err) {
     error.value = 'Erreur lors du chargement des services';
     console.error(err);
+  } finally {
+    loading.value = false;
   }
 };
 
@@ -35,8 +37,6 @@ const fetchCategories = async () => {
   } catch (err) {
     error.value = 'Erreur lors du chargement des catégories';
     console.error(err);
-  } finally {
-    loading.value = false;
   }
 };
 
@@ -182,19 +182,23 @@ onMounted(async () => {
             <div>
               <v-avatar size="small">
                 <v-img 
-                  v-if="service.prestataire?.photo"
-                  :src="service.prestataire.photo"
+                  v-if="service.prestataire?.client?.photo"
+                  :src="service.prestataire.client.photo"
                 />
                 <v-icon v-else>mdi-account</v-icon>
               </v-avatar>
               <span class="ml-2">
-                {{ service.prestataire?.nom || 'Prestataire' }}
+                {{ service.prestataire?.client?.nom || 'Prestataire' }} 
+                {{ service.prestataire?.client?.prenom || '' }}
               </span>
+              <div class="text-caption text-grey mt-1">
+                {{ service.prestataire?.client?.email || 'Email non disponible' }}
+              </div>
             </div>
             
             <v-rating 
               :model-value="service.commentaires?.length 
-                ? service.commentaires.reduce((acc, c) => acc + c.note, 0) / service.commentaires.length 
+                ? service.commentaires.reduce((acc: number, c: any) => acc + c.note, 0) / service.commentaires.length 
                 : 0"
               density="compact" 
               color="warning" 
@@ -218,4 +222,4 @@ onMounted(async () => {
       <v-alert type="info">Aucun service trouvé</v-alert>
     </v-col>
   </v-row>
-</template>        
+</template>
