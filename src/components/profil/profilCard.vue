@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue';
 import { useAuthStore } from '@/stores/auth';
 import { useRouter } from 'vue-router';
+import axios from 'axios'; // Import axios
 
 const authStore = useAuthStore();
 const router = useRouter();
@@ -42,6 +43,7 @@ const fetchProfile = async () => {
       headers: { Authorization: `Bearer ${authStore.token}` }
     });
 
+    // Modification ici pour correspondre à la structure de votre réponse backend
     if (response.data?.client) {
       profile.value = {
         id: response.data.client.id,
@@ -53,10 +55,21 @@ const fetchProfile = async () => {
         adresse: response.data.client.adresse || '',
         role: response.data.user.role
       };
+    } else if (response.data?.user) {
+      // Si vous voulez gérer le cas où il n'y a pas de client
+      profile.value = {
+        ...profile.value,
+        email: response.data.user.email,
+        role: response.data.user.role
+      };
     }
   } catch (err) {
     error.value = 'Erreur de chargement du profil';
     console.error(err);
+    // Redirection vers la page de connexion si non authentifié
+    if (err.response?.status === 401) {
+      router.push('/login');
+    }
   } finally {
     loading.value = false;
   }
