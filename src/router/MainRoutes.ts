@@ -47,6 +47,7 @@ const MainRoutes = {
             path: '/profil',
             component: () => import('@/views/profil/profils.vue')
         },
+  
        
     ]
 };

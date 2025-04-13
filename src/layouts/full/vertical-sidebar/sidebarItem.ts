@@ -74,19 +74,7 @@ const sidebarItem: menu[] = [
     to: '/auth/register',
     requiresAuth: false // Seulement visible si non connecté
   },
-{ header: 'Extra' },
-{
-    title: 'Icons',
-    icon: MoodHappyIcon,
-    BgColor: 'primary',
-    to: '/icons'
-},
-{
-    title: 'Sample Page',
-    icon: ApertureIcon,
-    BgColor: 'primary',
-    to: '/sample-page'
-},
+
 
 ];
 
