@@ -186,7 +186,7 @@ onMounted(fetchServices);
         <v-btn
           v-else
           color="warning"
-          to="/prestataire/create-profile"
+          to="/auth/register"
           prepend-icon="mdi-account-convert"
         >
           Créer mon profil prestataire
@@ -259,7 +259,7 @@ onMounted(fetchServices);
           </p>
           <v-btn
             color="warning"
-            to="/prestataire/create-profile"
+            to="/auth/register"
             prepend-icon="mdi-account-convert"
             class="mt-4"
           >

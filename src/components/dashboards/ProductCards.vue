@@ -7,12 +7,39 @@ const selectedCategory = ref<number | null>(null);
 const selectedSubCategory = ref<number | null>(null);
 const searchQuery = ref('');
 const services = ref<any[]>([]);
-const categories = ref<{id: number, nom: string}[]>([]);
-const subCategories = ref<{id: number, nom: string}[]>([]);
+const categories = ref<{ id: number, nom: string }[]>([]);
+const subCategories = ref<{ id: number, nom: string }[]>([]);
 const loading = ref(false);
 const error = ref('');
 
-// Charger les services depuis l'API
+// Informations de l'utilisateur connecté
+const currentUser = ref<{
+  user?: {
+    id: number;
+    email: string;
+    role: string;
+    name: string;
+  };
+  client?: {
+    id: number;
+    nom: string;
+    prenom: string;
+    email: string;
+  };
+} | null>(null);
+
+// Vérification du rôle client
+const isClient = computed(() => {
+  return currentUser.value?.user?.role?.toLowerCase() === 'client';
+});
+
+// Pour le commentaire
+const dialog = ref(false);
+const selectedServiceId = ref<number | null>(null);
+const commentText = ref('');
+const commentRating = ref(0);
+
+// Charger les services
 const fetchServices = async () => {
   try {
     loading.value = true;
@@ -26,7 +53,7 @@ const fetchServices = async () => {
   }
 };
 
-// Charger les catégories depuis l'API
+// Charger les catégories
 const fetchCategories = async () => {
   try {
     const response = await axios.get('http://localhost:8000/api/categories');
@@ -40,18 +67,16 @@ const fetchCategories = async () => {
   }
 };
 
-// Charger les sous-catégories en fonction de la catégorie sélectionnée
+// Charger les sous-catégories
 const fetchSubCategories = async (categoryId: number | null) => {
   try {
     if (!categoryId) {
       subCategories.value = [];
       return;
     }
-    
-    const response = await axios.get(`http://localhost:8000/api/souscategories`, {
+    const response = await axios.get('http://localhost:8000/api/souscategories', {
       params: { categorie_id: categoryId }
     });
-    
     subCategories.value = response.data.map((subCat: any) => ({
       id: subCat.id,
       nom: subCat.nom
@@ -62,42 +87,137 @@ const fetchSubCategories = async (categoryId: number | null) => {
   }
 };
 
-// Watcher pour charger les sous-catégories quand la catégorie change
+// Vérifier l'état de connexion et le rôle de l'utilisateur
+const checkAuthStatus = async () => {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      currentUser.value = null;
+      return;
+    }
+    
+    const response = await axios.get('http://localhost:8000/api/auth/user', {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    
+    // Structure les données de manière cohérente
+    currentUser.value = {
+      user: {
+        id: response.data.user.id,
+        email: response.data.user.email,
+        role: response.data.user.role,
+        name: response.data.user.name
+      },
+      client: response.data.client ? {
+        id: response.data.client.id,
+        nom: response.data.client.nom,
+        prenom: response.data.client.prenom,
+        email: response.data.client.email
+      } : undefined
+    };
+    
+    console.log('User data:', currentUser.value);
+  } catch (err) {
+    console.error('Auth error:', err);
+    currentUser.value = null;
+  }
+};
+
+// Watch catégorie
 watch(selectedCategory, (newVal) => {
   selectedSubCategory.value = null;
   fetchSubCategories(newVal);
 });
 
-// Filtrage des services
+// Filtrage
 const filteredServices = computed(() => {
   return services.value.filter(service => {
-    // Filtre par catégorie
     const matchesCategory = selectedCategory.value
       ? service.categorie?.id === selectedCategory.value
       : true;
-    
-    // Filtre par sous-catégorie
+
     const matchesSubCategory = selectedSubCategory.value
       ? service.sous_categorie_id === selectedSubCategory.value
       : true;
-    
-    // Filtre par recherche texte
+
     const matchesSearch = searchQuery.value
       ? service.description?.toLowerCase().includes(searchQuery.value.toLowerCase())
       : true;
-    
+
     return matchesCategory && matchesSubCategory && matchesSearch;
   });
 });
 
-// Chargement initial
+// Ouvrir le dialogue de commentaire
+const openCommentDialog = (serviceId: number) => {
+  if (!isClient.value) {
+    alert(`Vous devez être connecté en tant que client pour commenter. ${currentUser.value ? `(Rôle actuel: ${currentUser.value.user?.role})` : '(Non connecté)'}`);
+    return;
+  }
+  selectedServiceId.value = serviceId;
+  commentText.value = '';
+  commentRating.value = 0;
+  dialog.value = true;
+};
+
+// Envoyer le commentaire
+const submitComment = async () => {
+  if (!selectedServiceId.value || !commentText.value || commentRating.value <= 0) {
+    alert('Veuillez remplir tous les champs et donner une note');
+    return;
+  }
+
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert('Session expirée, veuillez vous reconnecter');
+      return;
+    }
+
+    const response = await axios.post('http://localhost:8000/api/commentaires', {
+      service_id: selectedServiceId.value,
+      texte: commentText.value,
+      note: commentRating.value
+    }, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    dialog.value = false;
+    commentText.value = '';
+    commentRating.value = 0;
+    await fetchServices(); // Recharger les services
+    
+    alert('Commentaire envoyé avec succès!');
+  } catch (err: any) {
+    console.error('Erreur:', err.response);
+    alert(err.response?.data?.message || 'Erreur lors de l\'envoi du commentaire');
+  }
+};
+
+// Initial load
 onMounted(async () => {
+  await checkAuthStatus();
   await Promise.all([fetchServices(), fetchCategories()]);
 });
 </script>
 
 <template>
   <v-row>
+    <!-- Debug auth status -->
+    <v-col cols="12" v-if="currentUser">
+      <v-alert type="info" density="compact">
+        Connecté en tant que: {{ currentUser.user?.role }} | 
+        Client: {{ currentUser.client?.nom }} {{ currentUser.client?.prenom }}
+        | Token: {{ localStorage.getItem('token') ? 'Présent' : 'Absent' }}
+        | isClient: {{ isClient }}
+      </v-alert>
+    </v-col>
+
     <!-- Filtres -->
     <v-col cols="12">
       <v-row>
@@ -135,25 +255,25 @@ onMounted(async () => {
       </v-row>
     </v-col>
 
-    <!-- Message d'erreur -->
+    <!-- Erreur -->
     <v-col cols="12" v-if="error">
       <v-alert type="error">{{ error }}</v-alert>
     </v-col>
 
-    <!-- Liste des services -->
-    <v-col 
-      cols="12" 
-      lg="4" 
-      md="6" 
-      v-for="service in filteredServices" 
+    <!-- Services -->
+    <v-col
+      cols="12"
+      lg="4"
+      md="6"
+      v-for="service in filteredServices"
       :key="service.id"
     >
       <v-card elevation="10" class="withbg">
         <RouterLink :to="`/services/${service.id}`">
-          <v-img 
+          <v-img
             v-if="service.prestataire?.portfolio?.images?.length"
-            :src="service.prestataire.portfolio.images[0]" 
-            height="200px" 
+            :src="service.prestataire.portfolio.images[0]"
+            height="200px"
             cover
             class="rounded-t-md"
           />
@@ -173,7 +293,7 @@ onMounted(async () => {
               {{ service.prix }} DT
             </v-chip>
           </div>
-          
+
           <div class="text-body-1 mt-2">
             {{ service.description || 'Aucune description disponible' }}
           </div>
@@ -181,32 +301,44 @@ onMounted(async () => {
           <div class="d-flex align-center justify-space-between mt-4">
             <div>
               <v-avatar size="small">
-                <v-img 
+                <v-img
                   v-if="service.prestataire?.client?.photo"
                   :src="service.prestataire.client.photo"
                 />
                 <v-icon v-else>mdi-account</v-icon>
               </v-avatar>
               <span class="ml-2">
-                {{ service.prestataire?.client?.nom || 'Prestataire' }} 
+                {{ service.prestataire?.client?.nom || 'Prestataire' }}
                 {{ service.prestataire?.client?.prenom || '' }}
               </span>
               <div class="text-caption text-grey mt-1">
                 {{ service.prestataire?.client?.email || 'Email non disponible' }}
               </div>
             </div>
-            
-            <v-rating 
-              :model-value="service.commentaires?.length 
-                ? service.commentaires.reduce((acc: number, c: any) => acc + c.note, 0) / service.commentaires.length 
+
+            <v-rating
+              :model-value="service.commentaires?.length
+                ? service.commentaires.reduce((acc, c) => acc + c.note, 0) / service.commentaires.length
                 : 0"
-              density="compact" 
-              color="warning" 
-              size="small" 
+              density="compact"
+              color="warning"
+              size="small"
               readonly
             />
           </div>
         </v-card-item>
+
+        <v-card-actions>
+          <v-btn
+            color="primary"
+            variant="tonal"
+            size="small"
+            @click="openCommentDialog(service.id)"
+            :disabled="!isClient"
+          >
+            {{ isClient ? 'Laisser un commentaire' : `Commenter (${currentUser ? 'Rôle: ' + currentUser.user?.role : 'Non connecté'})` }}
+          </v-btn>
+        </v-card-actions>
       </v-card>
     </v-col>
 
@@ -222,4 +354,33 @@ onMounted(async () => {
       <v-alert type="info">Aucun service trouvé</v-alert>
     </v-col>
   </v-row>
+
+  <!-- Dialogue commentaire -->
+  <v-dialog v-model="dialog" max-width="500px">
+    <v-card>
+      <v-card-title>Laisser un commentaire</v-card-title>
+      <v-card-text>
+        <v-rating
+          v-model="commentRating"
+          color="warning"
+          background-color="grey-lighten-2"
+          half-increments
+          length="5"
+          size="large"
+        />
+        <v-textarea
+          v-model="commentText"
+          label="Votre commentaire"
+          rows="4"
+          auto-grow
+          class="mt-4"
+        />
+      </v-card-text>
+      <v-card-actions>
+        <v-spacer />
+        <v-btn text @click="dialog = false">Annuler</v-btn>
+        <v-btn color="primary" @click="submitComment">Envoyer</v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
 </template>

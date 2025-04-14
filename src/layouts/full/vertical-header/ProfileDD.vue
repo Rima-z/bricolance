@@ -14,7 +14,7 @@ const handleLogout = async () => {
   try {
     await authStore.logout();
     // Redirection vers la page de login après déconnexion
-    router.push('/');
+    router.push('/ui/tables');
   } catch (error) {
     console.error('Erreur lors de la déconnexion:', error);
   }

@@ -27,6 +27,13 @@ export interface menu {
 const sidebarItem: menu[] = [
   { header: 'accueil' },
   {
+    title: "Accueil",
+    icon: BorderAllIcon,
+    BgColor: 'primary',
+    to: "/ui/tables",
+  },
+
+  {
     title: "Catégories",
     icon: BoxMultiple1Icon,
     BgColor: 'primary',
@@ -45,20 +52,9 @@ const sidebarItem: menu[] = [
     to: "/profil",
     requiresAuth: true // Seulement visible si connecté
   },
-  {
-    title: "Button",
-    icon: CircleDotIcon,
-    BgColor: 'primary',
-    to: "/ui/buttons",
-  },
+ 
   
-  {
-    title: "Tables",
-    icon: BorderAllIcon,
-    BgColor: 'primary',
-    to: "/ui/tables",
-  },
-
+  
   { header: 'Auth' },
   {
     title: 'Login',
