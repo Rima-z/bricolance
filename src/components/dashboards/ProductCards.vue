@@ -13,20 +13,7 @@ const loading = ref(false);
 const error = ref('');
 
 // Informations de l'utilisateur connecté
-const currentUser = ref<{
-  user?: {
-    id: number;
-    email: string;
-    role: string;
-    name: string;
-  };
-  client?: {
-    id: number;
-    nom: string;
-    prenom: string;
-    email: string;
-  };
-} | null>(null);
+const currentUser = ref<any>(null);
 
 // Vérification du rôle client
 const isClient = computed(() => {
@@ -38,6 +25,10 @@ const dialog = ref(false);
 const selectedServiceId = ref<number | null>(null);
 const commentText = ref('');
 const commentRating = ref(0);
+
+// Pour le portfolio
+const portfolioDialog = ref(false);
+const selectedPortfolio = ref<any>(null);
 
 // Charger les services
 const fetchServices = async () => {
@@ -57,10 +48,7 @@ const fetchServices = async () => {
 const fetchCategories = async () => {
   try {
     const response = await axios.get('http://localhost:8000/api/categories');
-    categories.value = response.data.map((cat: any) => ({
-      id: cat.id,
-      nom: cat.nom
-    }));
+    categories.value = response.data;
   } catch (err) {
     error.value = 'Erreur lors du chargement des catégories';
     console.error(err);
@@ -77,17 +65,14 @@ const fetchSubCategories = async (categoryId: number | null) => {
     const response = await axios.get('http://localhost:8000/api/souscategories', {
       params: { categorie_id: categoryId }
     });
-    subCategories.value = response.data.map((subCat: any) => ({
-      id: subCat.id,
-      nom: subCat.nom
-    }));
+    subCategories.value = response.data;
   } catch (err) {
     error.value = 'Erreur lors du chargement des sous-catégories';
     console.error(err);
   }
 };
 
-// Vérifier l'état de connexion et le rôle de l'utilisateur
+// Vérifier l'état de connexion
 const checkAuthStatus = async () => {
   try {
     const token = localStorage.getItem('token');
@@ -101,24 +86,7 @@ const checkAuthStatus = async () => {
         Authorization: `Bearer ${token}`
       }
     });
-    
-    // Structure les données de manière cohérente
-    currentUser.value = {
-      user: {
-        id: response.data.user.id,
-        email: response.data.user.email,
-        role: response.data.user.role,
-        name: response.data.user.name
-      },
-      client: response.data.client ? {
-        id: response.data.client.id,
-        nom: response.data.client.nom,
-        prenom: response.data.client.prenom,
-        email: response.data.client.email
-      } : undefined
-    };
-    
-    console.log('User data:', currentUser.value);
+    currentUser.value = response.data;
   } catch (err) {
     console.error('Auth error:', err);
     currentUser.value = null;
@@ -131,7 +99,7 @@ watch(selectedCategory, (newVal) => {
   fetchSubCategories(newVal);
 });
 
-// Filtrage
+// Filtrage des services
 const filteredServices = computed(() => {
   return services.value.filter(service => {
     const matchesCategory = selectedCategory.value
@@ -176,22 +144,18 @@ const submitComment = async () => {
       return;
     }
 
-    const response = await axios.post('http://localhost:8000/api/commentaires', {
+    await axios.post('http://localhost:8000/api/commentaires', {
       service_id: selectedServiceId.value,
       texte: commentText.value,
       note: commentRating.value
     }, {
       headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json'
+        Authorization: `Bearer ${token}`
       }
     });
 
     dialog.value = false;
-    commentText.value = '';
-    commentRating.value = 0;
-    await fetchServices(); // Recharger les services
-    
+    await fetchServices();
     alert('Commentaire envoyé avec succès!');
   } catch (err: any) {
     console.error('Erreur:', err.response);
@@ -199,7 +163,43 @@ const submitComment = async () => {
   }
 };
 
-// Initial load
+// Ouvrir le portfolio - Version corrigée mais conservant votre style
+const openPortfolioDialog = async (service: any) => {
+  try {
+    loading.value = true;
+    const response = await axios.get(`http://localhost:8000/api/services/${service.id}`);
+    const fullService = response.data;
+
+    if (fullService.portfolio) {
+      selectedPortfolio.value = {
+        images: fullService.portfolio.images || [],
+        description: fullService.portfolio.description || 'Aucune description disponible',
+        prestataire: {
+          nom: fullService.prestataire?.client?.nom || '',
+          prenom: fullService.prestataire?.client?.prenom || '',
+          email: fullService.prestataire?.client?.email || '',
+          photo: fullService.prestataire?.client?.photo
+        },
+        service: {
+          description: fullService.description || 'Aucune description disponible',
+          prix: fullService.prix || 0,
+          categorie: fullService.categorie?.nom || 'Non spécifiée',
+          sousCategorie: fullService.sous_categorie?.nom || 'Non spécifiée'
+        }
+      };
+      portfolioDialog.value = true;
+    } else {
+      alert('Ce service n\'a pas de portfolio disponible');
+    }
+  } catch (err) {
+    console.error('Erreur:', err);
+    alert('Erreur lors du chargement du portfolio');
+  } finally {
+    loading.value = false;
+  }
+};
+
+// Initialisation
 onMounted(async () => {
   await checkAuthStatus();
   await Promise.all([fetchServices(), fetchCategories()]);
@@ -213,8 +213,6 @@ onMounted(async () => {
       <v-alert type="info" density="compact">
         Connecté en tant que: {{ currentUser.user?.role }} | 
         Client: {{ currentUser.client?.nom }} {{ currentUser.client?.prenom }}
-        | Token: {{ localStorage.getItem('token') ? 'Présent' : 'Absent' }}
-        | isClient: {{ isClient }}
       </v-alert>
     </v-col>
 
@@ -268,23 +266,26 @@ onMounted(async () => {
       v-for="service in filteredServices"
       :key="service.id"
     >
-      <v-card elevation="10" class="withbg">
-        <RouterLink :to="`/services/${service.id}`">
-          <v-img
-            v-if="service.prestataire?.portfolio?.images?.length"
-            :src="service.prestataire.portfolio.images[0]"
-            height="200px"
-            cover
-            class="rounded-t-md"
-          />
-          <v-img
-            v-else
-            src="@/assets/images/products/s1.jpg"
-            height="200px"
-            cover
-            class="rounded-t-md"
-          />
-        </RouterLink>
+      <v-card 
+        elevation="10" 
+        class="withbg"
+        @click="openPortfolioDialog(service)"
+        style="cursor: pointer;"
+      >
+        <v-img
+          v-if="service.portfolio?.images?.length"
+          :src="service.portfolio.images[0]"
+          height="200px"
+          cover
+          class="rounded-t-md"
+        />
+        <v-img
+          v-else
+          src="@/assets/images/products/s1.jpg"
+          height="200px"
+          cover
+          class="rounded-t-md"
+        />
 
         <v-card-item class="pt-2">
           <div class="d-flex justify-space-between align-center">
@@ -328,12 +329,14 @@ onMounted(async () => {
           </div>
         </v-card-item>
 
+        <v-divider></v-divider>
+
         <v-card-actions>
           <v-btn
             color="primary"
             variant="tonal"
             size="small"
-            @click="openCommentDialog(service.id)"
+            @click.stop="openCommentDialog(service.id)"
             :disabled="!isClient"
           >
             {{ isClient ? 'Laisser un commentaire' : `Commenter (${currentUser ? 'Rôle: ' + currentUser.user?.role : 'Non connecté'})` }}
@@ -383,4 +386,103 @@ onMounted(async () => {
       </v-card-actions>
     </v-card>
   </v-dialog>
+
+  <!-- Dialogue portfolio -->
+  <v-dialog v-model="portfolioDialog" max-width="900px" scrollable>
+    <v-card v-if="selectedPortfolio">
+      <v-card-title class="d-flex justify-space-between align-center">
+        <div>
+          Portfolio de {{ selectedPortfolio.prestataire.nom }} {{ selectedPortfolio.prestataire.prenom }}
+        </div>
+        <v-btn icon @click="portfolioDialog = false">
+          <v-icon>mdi-close</v-icon>
+        </v-btn>
+      </v-card-title>
+      
+      <v-card-subtitle>
+        <v-chip class="mr-2" color="primary">
+          {{ selectedPortfolio.service.prix }} DT
+        </v-chip>
+        <v-chip class="mr-2">
+          {{ selectedPortfolio.service.categorie }} / {{ selectedPortfolio.service.sousCategorie }}
+        </v-chip>
+      </v-card-subtitle>
+      
+      <v-divider></v-divider>
+      
+      <v-card-text>
+        <!-- Carrousel d'images -->
+        <v-carousel 
+          v-if="selectedPortfolio.images.length > 0"
+          cycle
+          height="400"
+          hide-delimiters
+          show-arrows="hover"
+          class="mb-4"
+        >
+          <v-carousel-item
+            v-for="(image, i) in selectedPortfolio.images"
+            :key="i"
+          >
+            <v-img
+              :src="image"
+              contain
+              height="100%"
+              class="portfolio-image"
+            ></v-img>
+          </v-carousel-item>
+        </v-carousel>
+        <v-alert v-else type="info" class="mb-4">
+          Aucune image disponible dans ce portfolio
+        </v-alert>
+        
+        <!-- Description du service -->
+        <v-card outlined class="mb-4">
+          <v-card-title class="text-subtitle-1">Description du service</v-card-title>
+          <v-card-text>{{ selectedPortfolio.service.description }}</v-card-text>
+        </v-card>
+        
+        <!-- Description du portfolio -->
+        <v-card outlined>
+          <v-card-title class="text-subtitle-1">Description du portfolio</v-card-title>
+          <v-card-text>{{ selectedPortfolio.description }}</v-card-text>
+        </v-card>
+      </v-card-text>
+      
+      <v-divider></v-divider>
+      
+      <v-card-actions class="pa-4">
+        <div class="d-flex align-center">
+          <v-avatar size="40" class="mr-2">
+            <v-img
+              v-if="selectedPortfolio.prestataire.photo"
+              :src="selectedPortfolio.prestataire.photo"
+            />
+            <v-icon v-else>mdi-account</v-icon>
+          </v-avatar>
+          <div>
+            <div>{{ selectedPortfolio.prestataire.nom }} {{ selectedPortfolio.prestataire.prenom }}</div>
+            <div class="text-caption">{{ selectedPortfolio.prestataire.email }}</div>
+          </div>
+        </div>
+        <v-spacer></v-spacer>
+        <v-btn color="primary" @click="portfolioDialog = false">Fermer</v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
 </template>
+
+<style scoped>
+.portfolio-image {
+  object-fit: contain;
+  background-color: #f5f5f5;
+}
+
+.withbg {
+  transition: transform 0.2s;
+}
+
+.withbg:hover {
+  transform: translateY(-5px);
+}
+</style>

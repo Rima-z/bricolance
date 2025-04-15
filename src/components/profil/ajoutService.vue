@@ -10,9 +10,21 @@ const error = ref('');
 const services = ref([]);
 const hasPrestataireProfile = ref(true);
 const showAddDialog = ref(false);
+const showEditDialog = ref(false);
+const showDeleteDialog = ref(false);
+const currentServiceId = ref<number | null>(null);
 
-// Données du formulaire
+// Données des formulaires
 const form = ref({
+  prix: 0,
+  description: '',
+  categorie_id: null as number | null,
+  sous_categorie_id: null as number | null,
+  portfolio_images: [] as string[],
+  portfolio_description: ''
+});
+
+const editForm = ref({
   prix: 0,
   description: '',
   categorie_id: null as number | null,
@@ -48,6 +60,7 @@ interface Service {
   portfolio?: Portfolio;
 }
 
+// Récupérer les services
 const fetchServices = async () => {
   loading.value = true;
   error.value = '';
@@ -60,7 +73,6 @@ const fetchServices = async () => {
     });
 
     services.value = response.data?.services ?? response.data ?? [];
-    
     hasPrestataireProfile.value = services.value.length > 0 || 
                                  !(response.data?.has_prestataire === false);
 
@@ -76,6 +88,7 @@ const fetchServices = async () => {
   }
 };
 
+// Récupérer les catégories
 const fetchCategories = async () => {
   try {
     const response = await axios.get('http://localhost:8000/api/categories');
@@ -85,6 +98,7 @@ const fetchCategories = async () => {
   }
 };
 
+// Récupérer les sous-catégories
 const fetchSousCategories = async (categorieId: number) => {
   if (!categorieId) return;
   
@@ -93,7 +107,6 @@ const fetchSousCategories = async (categorieId: number) => {
       params: { categorie_id: categorieId }
     });
     sousCategories.value = response.data;
-    form.value.sous_categorie_id = null;
   } catch (err) {
     console.error('Erreur détaillée:', err);
     error.value = 'Erreur lors du chargement des sous-catégories';
@@ -101,14 +114,20 @@ const fetchSousCategories = async (categorieId: number) => {
   }
 };
 
-const handleImageUpload = (event: Event) => {
+// Gérer l'upload d'images
+const handleImageUpload = (event: Event, isEditForm = false) => {
   const input = event.target as HTMLInputElement;
   if (input.files) {
-    form.value.portfolio_images = Array.from(input.files).map(file => file.name);
-    // À remplacer par un vrai upload si nécessaire
+    const images = Array.from(input.files).map(file => file.name);
+    if (isEditForm) {
+      editForm.value.portfolio_images = images;
+    } else {
+      form.value.portfolio_images = images;
+    }
   }
 };
 
+// Ajouter un service
 const addService = async () => {
   loading.value = true;
   error.value = '';
@@ -148,6 +167,57 @@ const addService = async () => {
   }
 };
 
+// Modifier un service
+const updateService = async () => {
+  loading.value = true;
+  error.value = '';
+
+  try {
+    await axios.put(
+      `http://localhost:8000/api/services/${currentServiceId.value}`,
+      editForm.value,
+      {
+        headers: {
+          Authorization: `Bearer ${authStore.token}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    await fetchServices();
+    showEditDialog.value = false;
+  } catch (err: any) {
+    error.value = err.response?.data?.message || err.message || 'Erreur lors de la mise à jour du service';
+  } finally {
+    loading.value = false;
+  }
+};
+
+// Supprimer un service
+const deleteService = async () => {
+  loading.value = true;
+  error.value = '';
+
+  try {
+    await axios.delete(
+      `http://localhost:8000/api/services/${currentServiceId.value}`,
+      {
+        headers: {
+          Authorization: `Bearer ${authStore.token}`
+        }
+      }
+    );
+
+    await fetchServices();
+    showDeleteDialog.value = false;
+  } catch (err: any) {
+    error.value = err.response?.data?.message || err.message || 'Erreur lors de la suppression du service';
+  } finally {
+    loading.value = false;
+  }
+};
+
+// Réinitialiser les formulaires
 const resetForm = () => {
   form.value = {
     prix: 0,
@@ -160,12 +230,40 @@ const resetForm = () => {
   sousCategories.value = [];
 };
 
+// Ouvrir le dialogue d'ajout
 const openAddDialog = () => {
   showAddDialog.value = true;
   fetchCategories();
   resetForm();
 };
 
+// Ouvrir le dialogue d'édition
+const openEditDialog = (service: Service) => {
+  currentServiceId.value = service.id;
+  editForm.value = {
+    prix: service.prix,
+    description: service.description,
+    categorie_id: service.categorie.id,
+    sous_categorie_id: service.sous_categorie.id,
+    portfolio_images: service.portfolio?.images || [],
+    portfolio_description: service.portfolio?.description || ''
+  };
+  
+  fetchCategories();
+  if (service.categorie.id) {
+    fetchSousCategories(service.categorie.id);
+  }
+  
+  showEditDialog.value = true;
+};
+
+// Ouvrir le dialogue de suppression
+const openDeleteDialog = (serviceId: number) => {
+  currentServiceId.value = serviceId;
+  showDeleteDialog.value = true;
+};
+
+// Au montage du composant
 onMounted(fetchServices);
 </script>
 
@@ -213,6 +311,7 @@ onMounted(fetchServices);
             <th>Catégorie</th>
             <th>Sous-catégorie</th>
             <th>Portfolio</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -231,6 +330,28 @@ onMounted(fetchServices);
               </div>
               <div v-else>-</div>
             </td>
+            <td>
+  <div class="d-flex align-center" style="gap: 8px">
+    <v-btn
+      icon
+      variant="text"
+      color="primary"
+      size="small"
+      @click="openEditDialog(service)"
+    >
+      <v-icon size="20">mdi-pencil</v-icon>
+    </v-btn>
+    <v-btn
+      icon
+      variant="text"
+      color="error"
+      size="small"
+      @click="openDeleteDialog(service.id)"
+    >
+      <v-icon size="20">mdi-delete</v-icon>
+    </v-btn>
+  </div>
+</td>
           </tr>
         </tbody>
       </v-table>
@@ -270,6 +391,7 @@ onMounted(fetchServices);
     </v-card-item>
   </v-card>
 
+  <!-- Dialogue d'ajout -->
   <v-dialog v-model="showAddDialog" max-width="600" persistent>
     <v-card>
       <v-card-title class="d-flex justify-space-between align-center">
@@ -289,7 +411,7 @@ onMounted(fetchServices);
             <v-col cols="12" md="6">
               <v-text-field
                 v-model.number="form.prix"
-                label="Prix (€)"
+                label="Prix (DT)"
                 type="number"
                 min="0"
                 step="0.01"
@@ -338,7 +460,7 @@ onMounted(fetchServices);
                 label="Images du portfolio"
                 multiple
                 prepend-icon="mdi-camera"
-                @change="handleImageUpload"
+                @change="(e) => handleImageUpload(e, false)"
                 :disabled="loading"
               ></v-file-input>
               <div v-if="form.portfolio_images.length > 0" class="mt-2">
@@ -380,6 +502,149 @@ onMounted(fetchServices);
           </v-card-actions>
         </v-form>
       </v-card-text>
+    </v-card>
+  </v-dialog>
+
+  <!-- Dialogue d'édition -->
+  <v-dialog v-model="showEditDialog" max-width="600" persistent>
+    <v-card>
+      <v-card-title class="d-flex justify-space-between align-center">
+        <span>Modifier le service</span>
+        <v-btn icon @click="showEditDialog = false" :disabled="loading">
+          <v-icon>mdi-close</v-icon>
+        </v-btn>
+      </v-card-title>
+
+      <v-card-text>
+        <v-alert v-if="error" type="error" class="mb-4">
+          {{ error }}
+        </v-alert>
+
+        <v-form @submit.prevent="updateService">
+          <v-row>
+            <v-col cols="12" md="6">
+              <v-text-field
+                v-model.number="editForm.prix"
+                label="Prix (DT)"
+                type="number"
+                min="0"
+                step="0.01"
+                required
+                :disabled="loading"
+              ></v-text-field>
+            </v-col>
+
+            <v-col cols="12">
+              <v-textarea
+                v-model="editForm.description"
+                label="Description du service"
+                required
+                rows="3"
+                :disabled="loading"
+              ></v-textarea>
+            </v-col>
+
+            <v-col cols="12" md="6">
+              <v-select
+                v-model="editForm.categorie_id"
+                :items="categories"
+                item-title="nom"
+                item-value="id"
+                label="Catégorie"
+                required
+                :disabled="loading"
+                @update:modelValue="fetchSousCategories"
+              ></v-select>
+            </v-col>
+
+            <v-col cols="12" md="6">
+              <v-select
+                v-model="editForm.sous_categorie_id"
+                :items="sousCategories"
+                item-title="nom"
+                item-value="id"
+                label="Sous-catégorie"
+                :disabled="!editForm.categorie_id || loading"
+                required
+              ></v-select>
+            </v-col>
+
+            <v-col cols="12">
+              <v-file-input
+                label="Images du portfolio"
+                multiple
+                prepend-icon="mdi-camera"
+                @change="(e) => handleImageUpload(e, true)"
+                :disabled="loading"
+              ></v-file-input>
+              <div v-if="editForm.portfolio_images.length > 0" class="mt-2">
+                <v-chip
+                  v-for="(image, index) in editForm.portfolio_images"
+                  :key="index"
+                  class="ma-1"
+                >
+                  {{ image }}
+                </v-chip>
+              </div>
+            </v-col>
+
+            <v-col cols="12">
+              <v-textarea
+                v-model="editForm.portfolio_description"
+                label="Description du portfolio"
+                rows="2"
+                :disabled="loading"
+              ></v-textarea>
+            </v-col>
+          </v-row>
+
+          <v-card-actions class="justify-end mt-4">
+            <v-btn
+              text
+              @click="showEditDialog = false"
+              :disabled="loading"
+            >
+              Annuler
+            </v-btn>
+            <v-btn
+              color="primary"
+              :loading="loading"
+              type="submit"
+            >
+              Enregistrer
+            </v-btn>
+          </v-card-actions>
+        </v-form>
+      </v-card-text>
+    </v-card>
+  </v-dialog>
+
+  <!-- Dialogue de suppression -->
+  <v-dialog v-model="showDeleteDialog" max-width="400" persistent>
+    <v-card>
+      <v-card-title class="text-h5">Confirmer la suppression</v-card-title>
+      <v-card-text>
+        Êtes-vous sûr de vouloir supprimer ce service ? Cette action est irréversible.
+      </v-card-text>
+      <v-card-actions>
+        <v-spacer></v-spacer>
+        <v-btn
+          color="grey-darken-1"
+          text
+          @click="showDeleteDialog = false"
+          :disabled="loading"
+        >
+          Annuler
+        </v-btn>
+        <v-btn
+          color="error"
+          text
+          @click="deleteService"
+          :loading="loading"
+        >
+          Supprimer
+        </v-btn>
+      </v-card-actions>
     </v-card>
   </v-dialog>
 </template>

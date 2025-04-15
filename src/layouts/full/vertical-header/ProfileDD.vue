@@ -39,12 +39,7 @@ const handleLogout = async () => {
                     <v-list-item-title class="pl-4 text-body-1">mon profil</v-list-item-title>
                 </v-list-item>
                 
-                <v-list-item value="item3" color="primary"> 
-                    <template v-slot:prepend>
-                        <ListCheckIcon stroke-width="1.5" size="20"/>
-                    </template>
-                    <v-list-item-title class="pl-4 text-body-1">My Task</v-list-item-title>
-                </v-list-item>
+            
             </v-list>
             <div class="pt-4 pb-4 px-5 text-center">
                 <v-btn @click="handleLogout" color="primary" variant="outlined" class="rounded-pill" block>Se déconnecter</v-btn>
