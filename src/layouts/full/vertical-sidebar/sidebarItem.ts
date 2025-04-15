@@ -57,14 +57,14 @@ const sidebarItem: menu[] = [
   
   { header: 'Auth' },
   {
-    title: 'Login',
+    title: 'Se connecter',
     icon: LoginIcon,
     BgColor: 'primary',
     to: '/auth/login',
     requiresAuth: false // Seulement visible si non connecté
   },
   {
-    title: 'Register',
+    title: 'Créer un compte',
     icon: UserPlusIcon,
     BgColor: 'primary',
     to: '/auth/register',

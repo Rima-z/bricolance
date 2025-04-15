@@ -14,45 +14,42 @@ const formData = ref({
 
 const loading = ref(false);
 const error = ref('');
+const rememberDevice = ref(false);
 
 const login = async () => {
   loading.value = true;
   error.value = '';
   
   try {
-    // 1. First debug: Check if request is being sent
-    console.log('Sending login request...', formData.value);
+    console.log('Envoi de la requête de connexion...', formData.value);
 
     const response = await axios.post('http://localhost:8000/api/auth/login', {
       email: formData.value.email,
       password: formData.value.password
     });
 
-    // 2. Debug: Check server response
-    console.log('Login response:', response.data);
+    console.log('Réponse de connexion:', response.data);
 
     if (!response.data.token) {
-      throw new Error('No token received');
+      throw new Error('Aucun token reçu');
     }
 
     authStore.setToken(response.data.token);
     
-    // 3. Debug: Verify token is stored
-    console.log('Token set, redirecting...', authStore.token);
+    console.log('Token défini, redirection...', authStore.token);
     
-    router.push('/ui/cards');
+    router.push('/ui/tables');
   } catch (err: any) {
-    // 4. Debug: Detailed error logging
-    console.error('Login error:', err);
+    console.error('Erreur de connexion:', err);
     
     if (err.response) {
       error.value = err.response.data?.message || 
                    err.response.data?.error || 
-                   'Email or password incorrect';
+                   'Email ou mot de passe incorrect';
     } else if (err.request) {
-      error.value = 'Server not responding. Check your connection.';
+      error.value = 'Le serveur ne répond pas. Vérifiez votre connexion.';
     } else {
-      error.value = err.message || 'Login failed';
+      error.value = err.message || 'Échec de la connexion';
     }
   } finally {
     loading.value = false;
@@ -61,52 +58,66 @@ const login = async () => {
 </script>
 
 <template>
-  <div>
-    <v-alert 
-      v-if="error" 
-      type="error" 
-      class="mb-4"
-      closable
-      @click:close="error = ''"
-    >
-      {{ error }}
-    </v-alert>
-
-    <!-- Fixed email field with proper labels -->
-    <v-text-field 
-      v-model="formData.email"
-      label="Email address"
-      variant="outlined"
-      type="email"
-      :disabled="loading"
-      placeholder="your@email.com"
-      @keyup.enter="login"
-      aria-label="Email address"
-      class="mb-4"
-    ></v-text-field>
-
-    <!-- Fixed password field with proper labels -->
-    <v-text-field 
-      v-model="formData.password"
-      label="Password"
-      variant="outlined"
-      type="password"
-      :disabled="loading"
-      placeholder="Your password"
-      @keyup.enter="login"
-      aria-label="Password"
-      class="mb-4"
-    ></v-text-field>
-
-    <v-btn 
-      @click="login"
-      size="large"
-      color="primary"
-      block
-      :loading="loading"
-      :disabled="loading"
-    >
-      {{ loading ? 'Logging in...' : 'Login' }}
-    </v-btn>
-  </div>
+    <div class="d-flex align-center text-center mb-6">
+        <div class="text-h6 w-100 px-5 font-weight-regular auth-divider position-relative">
+            <span class="bg-surface px-5 py-3 position-relative text-subtitle-1 text-grey100">Connexion à votre compte</span>
+        </div>
+    </div>
+    
+    <div>
+        <v-alert 
+            v-if="error" 
+            type="error" 
+            class="mb-4"
+            closable
+            @click:close="error = ''"
+        >
+            {{ error }}
+        </v-alert>
+        
+        <v-row class="mb-3">
+            <v-col cols="12">
+                <v-label class="font-weight-medium mb-1">Adresse email</v-label>
+                <v-text-field 
+                    v-model="formData.email"
+                    variant="outlined" 
+                    class="pwdInput" 
+                    hide-details 
+                    color="primary"
+                    type="email"
+                    placeholder="votre@email.com"
+                    :disabled="loading"
+                ></v-text-field>
+            </v-col>
+            <v-col cols="12">
+                <v-label class="font-weight-medium mb-1">Mot de passe</v-label>
+                <v-text-field 
+                    v-model="formData.password"
+                    variant="outlined" 
+                    class="border-borderColor" 
+                    type="password" 
+                    hide-details
+                    color="primary"
+                    placeholder="Votre mot de passe"
+                    :disabled="loading"
+                    @keyup.enter="login"
+                ></v-text-field>
+            </v-col>
+            
+            <v-col cols="12">
+                <v-btn 
+                    size="large" 
+                    rounded="pill" 
+                    color="primary" 
+                    class="rounded-pill" 
+                    block 
+                    :loading="loading"
+                    :disabled="loading"
+                    @click="login"
+                >
+                    {{ loading ? 'Connexion en cours...' : 'Se connecter' }}
+                </v-btn>
+            </v-col>
+        </v-row>
+    </div>
 </template>
